@@ -1,0 +1,5 @@
+Run instructions: README.md:5 (Quick Start + scripts/start-dev.ps1) and Project_state.md:135 (Dev Workflow).
+  - Basic smoke check: README.md:22 (/health curl).
+  - “How to test/verify” checklists and phase gates: next_tasks.md:13 (Phase Gate Evidence) plus next_tasks.md:52,
+    next_tasks.md:90 (verification commands/examples).
+  - Logging/inspectability for debugging runs: Project_state.md:145 (Observability / Logs).

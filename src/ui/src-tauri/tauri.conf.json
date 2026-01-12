@@ -1,0 +1,37 @@
+{
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:1420",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "Logical Low-Friction AI Chat",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "open": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": "all",
+      "identifier": "com.logical-low-friction-ai-chat.dev"
+    },
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "title": "Logical Low-Friction AI Chat",
+        "width": 900,
+        "height": 700,
+        "resizable": true
+      }
+    ]
+  }
+}

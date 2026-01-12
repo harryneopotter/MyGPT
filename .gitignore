@@ -1,0 +1,65 @@
+# Editor / OS metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.code-workspace
+.history/
+
+# Python virtualenv + artifacts
+.env
+.venv/
+venv/
+ENV/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage*
+htmlcov/
+.eggs/
+*.egg-info/
+
+data/
+
+# Backend runtime
+*.db
+*.db-shm
+*.db-wal
+logs/
+artifacts/
+
+# Node / Vite / Tauri
+src/ui/node_modules/
+src/ui/dist/
+*.tsbuildinfo
+pnpm-lock.yaml
+package-lock.json
+.yarn/
+.pnp.cjs
+.pnp.data
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Tauri / Rust build output
+src/ui/src-tauri/target/
+src/ui/src-tauri/.cargo/
+src/ui/src-tauri/gen/
+Cargo.lock
+
+# Misc tooling
+*.log
+*.prompt.txt
+*.response.txt
+*.response.cleaned.txt
+rustup-init.exe
+
+# Lint / formatter caches
+.ruff_cache/
+.pyright/
+.oxlint/
