@@ -24,6 +24,7 @@ htmlcov/
 *.egg-info/
 
 data/
+sessions/
 
 # Backend runtime
 *.db
