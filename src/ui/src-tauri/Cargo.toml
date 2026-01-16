@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "UI for Logical Low-Friction AI Chat System"
 authors = ["You"]
 edition = "2021"
+build = "build.rs"
 
 [build-dependencies]
 tauri-build = { version = "1.5", features = [] }

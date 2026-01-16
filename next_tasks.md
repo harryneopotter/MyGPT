@@ -2,6 +2,8 @@
 
 This file is the execution guide to complete the remaining phases from `docs/implementation-plan.md` while strictly preserving the PRD invariants and the repo guardrails.
 
+**Status:** All phases are complete. The UI startup <2s gap is documented in `docs/perf-notes.md` and is not being targeted.
+
 ## Non‑Negotiables (Reinforce Before Every Change)
 - **Message integrity**: never update/delete message rows; corrections are additive messages only (`corrects_message_id`).
 - **UI never talks to models**: UI only calls backend endpoints; backend owns model/tool access.
@@ -18,50 +20,26 @@ For each phase, produce:
 
 ---
 
-## Phase 5 — Questioning Rules + Regeneration Semantics
-**Goal:** Prevent UX drift (permission-seeking, hidden rethink, preference drift) and implement regenerate as a true retry.
+## Phase 5 — Questioning Rules + Regeneration Semantics (Completed)
+**Status:** Implemented (backend clarification gate + regenerate semantics).
 
-### 5.1 Clarifying-question gate (backend policy)
-Implement a small, explicit policy function used on every response path:
-- Ask a clarifying question **only** when the answer materially changes scope/outcome.
-- No “Are you sure…?” / validation-seeking / comfort checks.
-- No “Would you like me to…?” unless the user asked for options.
-
-**Implementation approach**
-- Add a response policy module (e.g., `src/backend/response_policy.py`) that:
-  - decides: answer now vs ask 1 minimal question,
-  - provides a short “decision rationale” (for optional debug logging only; not shown to user unless requested).
-- Ensure this policy never consults inferred preferences (only approved prefs may affect defaults).
-
-**Pass/Fail checks**
-- Same input produces same behavior regardless of inferred-but-unapproved proposals.
-- Questions are rare, short, and forward-moving.
-
-### 5.2 Regenerate semantics (true retry)
-Add a UI “Regenerate” action that:
-- Regenerates **the last assistant response** for the same conversation context.
-- Does **not** create new preference proposals or reset existing approved preferences.
-- Does **not** mutate prior messages.
-
-**Suggested data shape (append-only)**
-- Add an `events` row for regenerate attempts:
-  - `type="regenerate"`
-  - `payload_json` includes: `target_assistant_message_id`, `request_params_hash`, and a new `trace_id`.
-- Store the regenerated output as a **new assistant message** (optionally link via `corrects_message_id` or a new linking table if needed).
-
-**Verification commands**
-- Run regenerate 5x; confirm:
-  - `preferences` table unchanged,
-  - no new `preference_proposals` created unless independently triggered by post-answer logic and allowed by rules,
-  - no message rows updated/deleted (triggers enforce this).
+**Evidence**
+- Clarifying gate: `src/backend/response_policy.py`, used by `/chat` in `src/backend/app.py`.
+- Regenerate: `/regenerate` endpoint appends new assistant messages and does not create proposals.
+- Tests: `python -m pytest` (see `tests/test_response_policy.py`).
 
 ---
 
-## Phase 6 — Tool Execution Sandbox (Structured, Inspectable)
+## Phase 6 - Tool Execution Sandbox (Structured, Inspectable) (Completed)
 **Goal:** Allow user-triggered tool execution without giving the model raw shell access.
 
-### 6.1 Tool model and allowlist
-Define tools as explicit backend-owned capabilities.
+### 6.1 Tool model and allowlist (Completed - backend)
+Implemented backend tool registry + runner with allowlisted, local-first tools.
+Current local tools: `list_dir`, `read_file`, `search_text`, `stat_path`, `write_file`, `git_status`, `git_diff`, `git_show`, `apply_patch`, `sql_query`, `open_url`, `run_command`.
+Network tools are disabled by default (`MYGPT_ALLOW_NETWORK_TOOLS=0`).
+
+### 6.2 Tool model and allowlist (Optional)
+Define tools as explicit backend-owned capabilities if you expand the tool set.
 - No “model can run any command”.
 - Every tool:
   - has a stable `tool_id`,
@@ -71,21 +49,23 @@ Define tools as explicit backend-owned capabilities.
   - bounded time/resources.
 
 **Recommended structure**
-- `src/backend/tools/registry.py`: tool definitions + allowlist.
-- `src/backend/tools/runner.py`: runs tools with subprocess isolation.
-- `src/backend/tools/schemas/*.json`: input/output schemas.
+- `src/backend/tools/registry.py`: tool definitions + allowlist (implemented).
+- `src/backend/tools/schemas/*.json`: optional input/output schemas if you want them split out later.
 
-### 6.2 Execution rules (hard constraints)
+### 6.3 Execution rules (hard constraints)
 - Tools execute **only** as a direct consequence of a user message in the active session.
 - Store a tool-run record as an append-only event:
   - `type="tool_run"`
   - `payload_json` includes: `tool_id`, `input_json`, `output_json`, `exit_code`, `started_at`, `ended_at`, `artifacts`.
 - Tool outputs must never mutate message history; attach artifacts separately.
 
-### 6.3 UI: explicit tool invocation
-Do not let the model “secretly” trigger tools.
-- Add explicit UI controls (buttons/forms) for tool runs, or a clearly gated “Run tool” confirmation step.
-- If a model suggests a tool run, it must ask for an explicit user-triggered action, not execute automatically.
+### 6.4 UI: explicit tool invocation (Completed)
+UI includes a tools panel with explicit confirmation and output viewer.
+
+### 6.5 UX polish (Deferred)
+- Add required-field hints and inline schema guidance for tool inputs.
+- Provide common presets (e.g., list repo root, last diff).
+- Improve formatting of tool outputs (tables for `sql_query`, collapsible sections for long logs).
 
 **Verification commands**
 - Attempt to run a non-allowlisted tool → clear structured error.
@@ -94,8 +74,11 @@ Do not let the model “secretly” trigger tools.
 
 ---
 
-## Phase 7 — Performance, Packaging, No-Background-Agents Guarantee
+## Phase 7 - Performance, Packaging, No-Background-Agents Guarantee (Completed)
 **Goal:** Meet constraints and prove there is no unintended autonomy.
+Use `docs/perf-notes.md` to capture measurements and decisions.
+
+**Status:** Complete with documented UI startup gap (see `docs/perf-notes.md`).
 
 ### 7.1 Performance targets (measure first)
 Create a small `docs/perf-notes.md` (or expand existing docs) with:
@@ -142,12 +125,10 @@ If schema changes are needed:
 
 ---
 
-## Suggested Execution Order (Practical)
-1. Phase 5.2 Regenerate (lowest risk: append-only events + new assistant messages).
-2. Phase 5.1 Clarifying-question gate (policy module + tests/fixtures if added later).
-3. Phase 6 Tool sandbox skeleton (registry + runner + one safe demo tool like “read file” or “list directory” with strict allowlist).
-4. Phase 6 UI tool invocation + event/audit trail.
-5. Phase 7 measurement + packaging plan + no-background-agents proof.
+## Suggested Execution Order (Historical)
+1. Phase 6 Tool sandbox skeleton (registry + runner + one safe demo tool like “read file” or “list directory” with strict allowlist).
+2. Phase 6 UI tool invocation + event/audit trail.
+3. Phase 7 measurement + packaging plan + no-background-agents proof.
 
 ## Quick “Don’t Accidentally Break PRD” Checklist
 - Did you add any `UPDATE`/`DELETE` path for `messages`? (must remain impossible)
@@ -155,4 +136,3 @@ If schema changes are needed:
 - Did any preference affect behavior before approval? (must remain impossible)
 - Did you introduce any timer/background thread/cron-like behavior? (must remain impossible)
 - Can every persisted change be explained and traced to an explicit user action? (must remain true)
-

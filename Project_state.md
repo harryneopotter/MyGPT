@@ -30,11 +30,18 @@ This document describes the current implemented state of the project (code + doc
 ## Repository Layout
 - `final_prd_logical_low_friction_ai_chat_system.md`: source-of-truth PRD.
 - `docs/`: operational docs (guardrails, deviation policy, implementation plan).
+- `docs/tools.md`: tool sandbox usage + environment flags.
+- `docs/perf-notes.md`: Phase 7 performance + packaging notes.
 - `plans/`: planning artifacts (e.g., feasibility notes).
 - `src/backend/`: FastAPI control plane + model gateway + SQLite schema.
 - `src/ui/`: Tauri + React UI.
 - `system/`: versioned constitutional system prompt artifact + hash.
 - `scripts/`: dev scripts (start backend + UI together).
+- `scripts/measure-backend-startup.ps1`: backend startup timing script.
+- `scripts/measure-backend-idle.ps1`: backend idle CPU/memory/events script.
+- `scripts/measure-ui-startup.ps1`: UI startup timing helper.
+- `scripts/measure-ttft.ps1`: TTFT timing helper for `/chat`.
+- `scripts/ensure-dev.ps1`: starts llama.cpp, backend, and UI if not running.
 - `data/`: runtime state
   - `data/chat.db`: SQLite DB
   - `data/llm_logs/`: prompt/response traces (dev logging)
@@ -44,11 +51,15 @@ This document describes the current implemented state of the project (code + doc
   - `GET /conversations`, `POST /conversations`
   - `GET /messages?conversation_id=...`
   - `POST /chat` (SSE streaming)
+  - `GET /model`, `POST /model` (set model URL)
+  - `GET /model/options`, `POST /model/switch` (restart llama.cpp with selected model)
   - `GET /preference-proposals`, `POST /preference-proposals/{id}/approve|reject`
   - `GET /preferences`, `POST /preferences/reset`
 - Backend (`src/backend/app.py`) calls:
   - SQLite schema in `src/backend/schema.sql`
   - Model gateway in `src/backend/model_gateway.py`
+  - Clarifying-question policy in `src/backend/response_policy.py`
+  - Tool registry/runner in `src/backend/tools/registry.py`
 - Model gateway (`src/backend/model_gateway.py`) calls:
   - llama.cpp server endpoint: `POST {MYGPT_MODEL_URL}/completion`
   - base system prompt: `system/base_assistant_prompt.md` (verified by `system/base_assistant_prompt.sha256`)
@@ -68,6 +79,14 @@ This document describes the current implemented state of the project (code + doc
     - `{"token":"..."}` repeated
     - optional `{"proposal": {...}}` at end
     - `{"done": true}` final
+- Tools
+  - `GET /tools`
+  - `POST /tools/run` (body: `{ "tool_id": string, "tool_input": object, "causality_message_id": number, "conversation_id"?: number, "confirmed"?: boolean }`)
+- Model
+  - `GET /model`
+  - `POST /model` (body: `{ "model_url": string }`)
+  - `GET /model/options`
+  - `POST /model/switch` (body: `{ "model_key": string, "confirmed": boolean }`)
 - Preferences
   - `GET /preferences?scope=global`
   - `POST /preferences/reset?scope=global` (append-only reset marker; does not delete history)
@@ -108,6 +127,7 @@ Authoritative schema is `src/backend/schema.sql`.
 - `conversation_messages(conversation_id, message_id, created_at)` (mapping; supports multiple conversations without mutating messages)
 - `events(id, type, payload_json, created_at, conversation_id, causality_message_id)`
   - Used for inspectable actions (preference approvals/rejections, LLM request/response trace pointers, resets).
+  - Tool runs are recorded as `type="tool_run"` with inputs/outputs and timing.
 - `preference_proposals(...)`
   - Stores inferred proposals separately from approved preferences.
 - `preferences(id, key, value, scope, created_at, approved_event_id, source_proposal_id)`
@@ -131,6 +151,19 @@ Implemented in `src/ui/src/App.tsx`:
 - Preferences panel:
   - refresh list
   - reset to baseline (calls backend reset endpoint)
+- Tools panel:
+  - tool selector + JSON input
+  - quick input form for common tool fields (apply-to-JSON)
+  - explicit confirmation for protected tools
+  - output/error viewer
+- Model panel:
+  - shows current model URL
+  - allows explicit switching to another llama.cpp server URL
+  - supports single-server model restarts via model switcher script
+- Operations panel:
+  - service status (backend/llama)
+  - log viewer (app + error)
+  - start/stop llama.cpp with confirmation
 
 ## Dev Workflow
 - Start both backend and UI:
@@ -138,9 +171,12 @@ Implemented in `src/ui/src/App.tsx`:
   - Defaults: prompt/response logging ON (disable with `-DisableLlmLogging`)
 - Backend only:
   - `python -m pip install -r src\backend\requirements.txt`
+  - `python -m pip install -r src\backend\requirements-dev.txt`
   - `python -m uvicorn src.backend.app:app --reload --host 127.0.0.1 --port 8000`
 - UI only:
   - `cd src\ui; npm install; npm run tauri dev`
+ - Tests:
+  - `python -m pytest`
 
 ## Observability / Logs
 When enabled (default in dev script), backend writes:
@@ -150,12 +186,13 @@ When enabled (default in dev script), backend writes:
 and records corresponding `events` rows with file paths + sha256 hashes.
 
 ## Phase Status (Against `docs/implementation-plan.md`)
-- Phase 0–3: runnable baseline, UI shell, immutable log, model gateway + streaming: implemented.
+- Phase 0-3: runnable baseline, UI shell, immutable log, model gateway + streaming: implemented.
 - Phase 4: preference proposal/approval pipeline: implemented (heuristic inference; approval stored as events + append-only prefs).
-- Phase 5–7: not fully implemented (questioning rules/regeneration semantics, tool sandbox, packaging/perf/no-background-agents verification).
+- Phase 5: questioning rules (clarifying gate) + regenerate semantics: implemented.
+- Phase 6: backend tool registry/runner + UI tool invocation implemented.
+- Phase 7: complete with documented UI startup gap (see `docs/perf-notes.md`).
 
 ## Known Issues / Tuning Notes
 - Some models output internal “thinking” or attempt to continue the transcript; mitigations exist (stop sequences, sanitization, response cleaning), but model behavior still matters.
 - Old conversations can be “polluted” by earlier assistant messages; immutability prevents rewriting. Use `New Chat` to validate changes.
 - If responses appear truncated, increase `MYGPT_N_PREDICT` (or `-ModelMaxTokens` in `scripts/start-dev.ps1`) and inspect the raw vs cleaned response logs.
-

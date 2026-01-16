@@ -19,6 +19,18 @@ python -m pip install -r src\backend\requirements.txt
 python -m uvicorn src.backend.app:app --reload --host 127.0.0.1 --port 8000
 ```
 
+### Tests
+```powershell
+python -m pip install -r src\backend\requirements-dev.txt
+python -m pytest
+```
+
+### Ensure Dev Services
+Starts llama.cpp (via model switcher), backend, and UI if they are not already running.
+```powershell
+pwsh -File .\scripts\ensure-dev.ps1
+```
+
 Health check (once running):
 ```powershell
 curl http://127.0.0.1:8000/health

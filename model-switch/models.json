@@ -1,0 +1,36 @@
+{
+  "default_model_key": "qwen2.5",
+  "model_url": "http://127.0.0.1:8081",
+  "models": [
+    {
+      "key": "qwen2.5",
+      "display": "Qwen2.5 (8.37 GB)",
+      "gguf_path": "D:\\Local\\blobs\\sha256-2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54",
+      "notes": "Generalist, strong reasoning, good Hindi+English."
+    },
+    {
+      "key": "qwen2.5-coder",
+      "display": "Qwen2.5 Coder (8.37 GB)",
+      "gguf_path": "D:\\Local\\blobs\\sha256-ac9bc7a69dab38da1c790838955f1293420b55ab555ef6b4615efa1c1507b1ed",
+      "notes": "Coding-heavy tasks, code review, refactors."
+    },
+    {
+      "key": "gemma3",
+      "display": "Gemma 3 (7.59 GB)",
+      "gguf_path": "D:\\Local\\blobs\\sha256-e8ad13eff07a78d89926e9e8b882317d082ef5bf9768ad7b50fcdbbcd63748de",
+      "notes": "General reasoning, stable responses, moderate speed."
+    },
+    {
+      "key": "nemo6b",
+      "display": "Nemo 6B (6.26 GB)",
+      "gguf_path": "D:\\Local\\blobs\\sha256-258cc51bf5a4a8cdce09610e08fc6b6c71a36cbddedef22b9ca68cccff6c1bf1",
+      "notes": "Smaller/faster, good for quick tasks."
+    },
+    {
+      "key": "openhermes",
+      "display": "OpenHermes (4.07 GB)",
+      "gguf_path": "D:\\Local\\blobs\\sha256-79e5ebcfa4cc893bbcf1ee9eb28628c5ae08e73be309351648d2b8ff34e2d2b4",
+      "notes": "Lightweight generalist, good when VRAM is tight."
+    }
+  ]
+}

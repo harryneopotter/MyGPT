@@ -62,7 +62,7 @@ def _assemble_prompt(messages: list[dict], preferences: dict[str, str] | None = 
         # obvious transcript artifacts and reasoning wrappers that can cause the
         # model to "continue the log" instead of answering.
         s = str(text)
-        s = re.sub(r"\x1b\\[[0-9;]*[A-Za-z]", "", s)
+        s = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", s)
         # Strip reasoning blocks, including cases where the close tag is missing due to truncation.
         s = re.sub(r"<think>.*?(</think>|$)", "", s, flags=re.DOTALL)
         s = re.sub(r"〈thinking〉.*?(〈/thinking〉|$)", "", s, flags=re.DOTALL)
@@ -152,13 +152,14 @@ async def generate(
     messages: list[dict],
     preferences: dict[str, str] | None = None,
     prompt: str | None = None,
+    model_url: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """
     Streams tokens from a local llama.cpp-style HTTP server. If the server is
     unreachable, falls back to a deterministic local echo.
     """
 
-    model_url = os.getenv("MYGPT_MODEL_URL", DEFAULT_MODEL_URL).rstrip("/")
+    model_url = (model_url or os.getenv("MYGPT_MODEL_URL", DEFAULT_MODEL_URL)).rstrip("/")
     prompt_text = prompt if prompt is not None else build_prompt(messages, preferences=preferences)
 
     payload = {
